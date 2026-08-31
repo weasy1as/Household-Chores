@@ -60,4 +60,18 @@ public class HouseholdController {
                 jwt
         );
     }
+
+    @DeleteMapping("/{householdId}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(
+            @PathVariable UUID householdId,
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        householdService.removeMember(
+                householdId,
+                userId,
+                jwt
+        );
+    }
 }
