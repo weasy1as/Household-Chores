@@ -6,6 +6,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/households")
 public class HouseholdController {
@@ -27,5 +29,12 @@ public class HouseholdController {
                 request.timezone(),
                 jwt
         );
+    }
+
+    @GetMapping
+    public List<HouseholdResponse> getMyHouseholds(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.getMyHouseholds(jwt);
     }
 }

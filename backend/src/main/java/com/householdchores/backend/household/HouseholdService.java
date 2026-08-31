@@ -6,6 +6,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class HouseholdService {
 
@@ -46,5 +48,20 @@ public class HouseholdService {
         householdMemberRepository.save(owner);
 
         return household;
+    }
+
+    @Transactional(readOnly = true)
+    public List<HouseholdResponse> getMyHouseholds(Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt);
+
+        return householdMemberRepository.findByUserId(user.getId())
+                .stream()
+                .map(member -> new HouseholdResponse(
+                        member.getHousehold().getId(),
+                        member.getHousehold().getName(),
+                        member.getHousehold().getTimezone(),
+                        member.getRole()
+                ))
+                .toList();
     }
 }
