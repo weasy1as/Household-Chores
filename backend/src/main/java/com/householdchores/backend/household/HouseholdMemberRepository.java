@@ -3,6 +3,7 @@ package com.householdchores.backend.household;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface HouseholdMemberRepository
@@ -10,4 +11,8 @@ public interface HouseholdMemberRepository
     List<HouseholdMember> findByUserId(UUID userId);
     List<HouseholdMember> findByHouseholdId(UUID householdId);
     boolean existsByHouseholdIdAndUserId(UUID householdId, UUID userId);
+    Optional<HouseholdMember> findByHouseholdIdAndUserId(
+            UUID householdId,
+            UUID userId
+    );
 }

@@ -1,6 +1,7 @@
 package com.householdchores.backend.household;
 
 import com.householdchores.backend.user.User;
+import com.householdchores.backend.user.UserRepository;
 import com.householdchores.backend.user.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -17,15 +18,18 @@ public class HouseholdService {
     private final HouseholdRepository householdRepository;
     private final HouseholdMemberRepository householdMemberRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     public HouseholdService(
             HouseholdRepository householdRepository,
             HouseholdMemberRepository householdMemberRepository,
-            UserService userService
+            UserService userService,
+            UserRepository userRepository
     ) {
         this.householdRepository = householdRepository;
         this.householdMemberRepository = householdMemberRepository;
         this.userService = userService;
+        this.userRepository=userRepository;
     }
 
     @Transactional
@@ -97,5 +101,69 @@ public class HouseholdService {
                         member.getRotationPosition()
                 ))
                 .toList();
+    }
+    @Transactional
+    public HouseholdMember addMember(
+            UUID householdId,
+            String email,
+            Jwt jwt
+    ) {
+        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        HouseholdMember currentMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(householdId, currentUserId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "You are not a member of this household"
+                        ));
+
+        if (currentMember.getRole() != HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the household owner can add members"
+            );
+        }
+
+        User userToAdd = userRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found"
+                ));
+
+        if (householdMemberRepository
+                .existsByHouseholdIdAndUserId(householdId, userToAdd.getId())) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "User is already a member of this household"
+            );
+        }
+
+        int nextRotationPosition =
+                householdMemberRepository
+                        .findByHouseholdId(householdId)
+                        .stream()
+                        .mapToInt(HouseholdMember::getRotationPosition)
+                        .max()
+                        .orElse(-1) + 1;
+
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        HouseholdMember newMember = new HouseholdMember(
+                household,
+                userToAdd,
+                HouseholdMemberRole.MEMBER,
+                HouseholdMemberStatus.ACTIVE,
+                nextRotationPosition
+        );
+
+        return householdMemberRepository.save(newMember);
     }
 }

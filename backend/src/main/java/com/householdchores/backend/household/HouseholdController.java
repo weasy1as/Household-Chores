@@ -46,4 +46,18 @@ public class HouseholdController {
     ) {
         return householdService.getMembers(householdId, jwt);
     }
+
+    @PostMapping("/{householdId}/members")
+    @ResponseStatus(HttpStatus.CREATED)
+    public HouseholdMember addMember(
+            @PathVariable UUID householdId,
+            @RequestBody AddHouseholdMemberRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.addMember(
+                householdId,
+                request.email(),
+                jwt
+        );
+    }
 }
