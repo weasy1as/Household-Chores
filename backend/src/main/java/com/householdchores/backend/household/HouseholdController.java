@@ -76,6 +76,21 @@ public class HouseholdController {
         );
     }
 
+    @PatchMapping("/{householdId}/members/{userId}/status")
+    public HouseholdMember updateMemberStatus(
+            @PathVariable UUID householdId,
+            @PathVariable UUID userId,
+            @RequestParam HouseholdMemberStatus status,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.updateMemberStatus(
+                householdId,
+                userId,
+                status,
+                jwt
+        );
+    }
+
     @DeleteMapping("/{householdId}")
     public ResponseEntity<Void> deleteHousehold(
             @PathVariable UUID householdId,

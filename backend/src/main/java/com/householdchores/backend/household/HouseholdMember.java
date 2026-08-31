@@ -75,4 +75,8 @@ public class HouseholdMember {
     public int getRotationPosition() {
         return rotationPosition;
     }
+
+    public void updateStatus(HouseholdMemberStatus status) {
+        this.status = status;
+    }
 }

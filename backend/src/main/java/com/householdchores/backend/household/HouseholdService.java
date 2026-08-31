@@ -209,6 +209,56 @@ public class HouseholdService {
     }
 
     @Transactional
+    public HouseholdMember updateMemberStatus(
+            UUID householdId,
+            UUID userIdToUpdate,
+            HouseholdMemberStatus status,
+            Jwt jwt
+    ) {
+        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        HouseholdMember currentMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(
+                                householdId,
+                                currentUserId
+                        )
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "You are not a member of this household"
+                        ));
+
+        if (currentMember.getRole() != HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the household owner can update member status"
+            );
+        }
+
+        HouseholdMember memberToUpdate =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(
+                                householdId,
+                                userIdToUpdate
+                        )
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Member not found"
+                        ));
+
+        if (memberToUpdate.getRole() == HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "The household owner status cannot be changed"
+            );
+        }
+
+        memberToUpdate.updateStatus(status);
+
+        return householdMemberRepository.save(memberToUpdate);
+    }
+
+    @Transactional
     public void deleteHousehold(UUID householdId, Jwt jwt) {
 
         Household household = householdRepository
