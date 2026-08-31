@@ -34,6 +34,14 @@ public class Household {
         this.createdAt = Instant.now();
     }
 
+    public void update(
+            String name,
+            String timezone
+    ) {
+        this.name = name;
+        this.timezone = timezone;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -49,4 +57,6 @@ public class Household {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+
 }

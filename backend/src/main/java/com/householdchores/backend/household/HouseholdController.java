@@ -84,4 +84,18 @@ public class HouseholdController {
         householdService.deleteHousehold(householdId, jwt);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{householdId}")
+    public Household updateHousehold(
+            @PathVariable UUID householdId,
+            @Valid @RequestBody UpdateHouseholdRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.updateHousehold(
+                householdId,
+                request.name(),
+                request.timezone(),
+                jwt
+        );
+    }
 }
