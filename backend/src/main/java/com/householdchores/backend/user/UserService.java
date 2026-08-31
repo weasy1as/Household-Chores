@@ -22,7 +22,17 @@ public class UserService {
         return userRepository.findById(userId)
                 .orElseGet(() -> {
                     String email = jwt.getClaimAsString("email");
-                    String displayName = jwt.getClaimAsString("user_metadata.display_name");
+                    String displayName = null;
+
+                    Object userMetadata = jwt.getClaim("user_metadata");
+
+                    if (userMetadata instanceof java.util.Map<?, ?> metadata) {
+                        Object value = metadata.get("display_name");
+
+                        if (value != null) {
+                            displayName = value.toString();
+                        }
+                    }
 
                     if (email == null || email.isBlank()) {
                         throw new IllegalStateException(
