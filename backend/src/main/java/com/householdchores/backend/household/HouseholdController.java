@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/households")
@@ -36,5 +37,13 @@ public class HouseholdController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return householdService.getMyHouseholds(jwt);
+    }
+
+    @GetMapping("/{householdId}/members")
+    public List<HouseholdMemberResponse> getMembers(
+            @PathVariable UUID householdId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.getMembers(householdId, jwt);
     }
 }

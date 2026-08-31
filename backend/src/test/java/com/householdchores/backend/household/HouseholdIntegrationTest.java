@@ -30,6 +30,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -180,5 +182,124 @@ class HouseholdIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("Test Household"))
                 .andExpect(jsonPath("$[0].timezone").value("Europe/Copenhagen"))
                 .andExpect(jsonPath("$[0].role").value("OWNER"));
+    }
+
+    @Test
+    void getMembers_withoutAuthentication_returns401() throws Exception {
+
+        UUID householdId = UUID.randomUUID();
+
+        mockMvc.perform(
+                        get("/api/households/{householdId}/members", householdId)
+                )
+                .andExpect(status().isUnauthorized());
+    }
+    @Test
+    void getMembers_asHouseholdMember_returnsMembers() throws Exception {
+
+        UUID userId = UUID.randomUUID();
+
+        jdbcTemplate.update(
+                "INSERT INTO auth.users (id) VALUES (?)",
+                userId
+        );
+
+        var jwtToken = jwt().jwt(jwt -> jwt
+                .subject(userId.toString())
+                .claim("email", "test-" + userId + "@example.com")
+                .claim("user_metadata", Map.of(
+                        "display_name", "Test User"
+                ))
+        );
+
+
+        MvcResult createResult = mockMvc.perform(
+                        post("/api/households")
+                                .with(jwtToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                        {
+                          "name": "Test Household",
+                          "timezone": "Europe/Copenhagen"
+                        }
+                        """)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String response = createResult
+                .getResponse()
+                .getContentAsString();
+
+        String householdId = JsonPath.read(response, "$.id");
+
+        mockMvc.perform(
+                        get("/api/households/{householdId}/members", householdId)
+                                .with(jwtToken)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].userId").value(userId.toString()))
+                .andExpect(jsonPath("$[0].displayName").value("Test User"))
+                .andExpect(jsonPath("$[0].role").value("OWNER"))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$[0].rotationPosition").value(0));
+    }
+    @Test
+    void getMembers_asNonMember_returns403() throws Exception {
+
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+
+        jdbcTemplate.update(
+                "INSERT INTO auth.users (id) VALUES (?)",
+                ownerId
+        );
+
+        jdbcTemplate.update(
+                "INSERT INTO auth.users (id) VALUES (?)",
+                otherUserId
+        );
+
+        var ownerJwt = jwt().jwt(jwt -> jwt
+                .subject(ownerId.toString())
+                .claim("email", "owner-" + ownerId + "@example.com")
+                .claim("user_metadata", java.util.Map.of(
+                        "display_name", "Owner"
+                ))
+        );
+
+        MvcResult createResult = mockMvc.perform(
+                        post("/api/households")
+                                .with(ownerJwt)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                        {
+                          "name": "Owner Household",
+                          "timezone": "Europe/Copenhagen"
+                        }
+                        """)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String householdId = JsonPath.read(
+                createResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+
+        var otherUserJwt = jwt().jwt(jwt -> jwt
+                .subject(otherUserId.toString())
+                .claim("email", "other-" + otherUserId + "@example.com")
+                .claim("user_metadata", java.util.Map.of(
+                        "display_name", "Other User"
+                ))
+        );
+
+        mockMvc.perform(
+                        get("/api/households/{householdId}/members", householdId)
+                                .with(otherUserJwt)
+                )
+                .andExpect(status().isForbidden());
     }
 }
