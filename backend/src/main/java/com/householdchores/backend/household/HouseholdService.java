@@ -207,4 +207,41 @@ public class HouseholdService {
 
         householdMemberRepository.delete(memberToRemove);
     }
+
+    @Transactional
+    public void deleteHousehold(UUID householdId, Jwt jwt) {
+
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        HouseholdMember currentMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(
+                                householdId,
+                                currentUserId
+                        )
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "You are not a member of this household"
+                        ));
+
+        if (currentMember.getRole() != HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the household owner can delete the household"
+            );
+        }
+
+        householdMemberRepository.deleteAll(
+                householdMemberRepository.findByHouseholdId(householdId)
+        );
+
+        householdRepository.delete(household);
+    }
 }

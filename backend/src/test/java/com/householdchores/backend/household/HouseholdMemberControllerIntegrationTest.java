@@ -553,4 +553,75 @@ public class HouseholdMemberControllerIntegrationTest {
                 )
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void addMember_createsActiveMemberWithNextRotationPosition_returns201()
+            throws Exception {
+
+        TestUser owner = fixtures.createUser(
+                "owner-" + UUID.randomUUID() + "@example.com",
+                "Owner"
+        );
+
+        TestUser member = fixtures.createUser(
+                "member-" + UUID.randomUUID() + "@example.com",
+                "Member"
+        );
+
+        var ownerJwt = jwt().jwt(jwt -> jwt
+                .subject(owner.id().toString())
+                .claim("email", owner.email())
+        );
+
+        MvcResult createResult = mockMvc.perform(
+                        post("/api/households")
+                                .with(ownerJwt)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                {
+                                  "name": "Test Household",
+                                  "timezone": "Europe/Copenhagen"
+                                }
+                                """)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String householdId = JsonPath.read(
+                createResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+
+        mockMvc.perform(
+                        post(
+                                "/api/households/{householdId}/members",
+                                householdId
+                        )
+                                .with(ownerJwt)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                {
+                                  "email": "%s"
+                                }
+                                """.formatted(member.email()))
+                )
+                .andExpect(status().isCreated());
+
+        HouseholdMember addedMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(
+                                UUID.fromString(householdId),
+                                member.id()
+                        )
+                        .orElseThrow();
+
+        assertThat(addedMember.getRole())
+                .isEqualTo(HouseholdMemberRole.MEMBER);
+
+        assertThat(addedMember.getStatus())
+                .isEqualTo(HouseholdMemberStatus.ACTIVE);
+
+        assertThat(addedMember.getRotationPosition())
+                .isEqualTo(1);
+    }
 }
