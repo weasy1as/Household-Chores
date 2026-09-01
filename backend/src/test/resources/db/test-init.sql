@@ -3,3 +3,7 @@ CREATE SCHEMA IF NOT EXISTS auth;
 CREATE TABLE IF NOT EXISTS auth.users (
     id UUID PRIMARY KEY
 );
+
+ALTER TABLE households
+ADD COLUMN rotation_start_position INTEGER NOT NULL DEFAULT 0;
+rotation_start_date DATE NOT NULL DEFAULT CURRENT_DATE,

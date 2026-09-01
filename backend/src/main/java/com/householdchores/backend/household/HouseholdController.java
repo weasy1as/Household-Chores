@@ -113,4 +113,32 @@ public class HouseholdController {
                 jwt
         );
     }
+
+    @PatchMapping("/{householdId}/members/{userId}/rotation-position")
+    public HouseholdMember updateRotationPosition(
+            @PathVariable UUID householdId,
+            @PathVariable UUID userId,
+            @RequestParam int position,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.updateRotationPosition(
+                householdId,
+                userId,
+                position,
+                jwt
+        );
+    }
+
+    @PatchMapping("/{householdId}/rotation-start")
+    public Household setRotationStartingPoint(
+            @PathVariable UUID householdId,
+            @RequestParam int startPosition,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.setRotationStartingPoint(
+                householdId,
+                startPosition,
+                jwt
+        );
+    }
 }

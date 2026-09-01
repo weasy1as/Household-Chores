@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -24,6 +25,11 @@ public class Household {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "rotation_start_position", nullable = false)
+    private int rotationStartPosition;
+    @Column(name = "rotation_start_date", nullable = false)
+    private LocalDate rotationStartDate;
+
     protected Household() {
     }
 
@@ -32,6 +38,8 @@ public class Household {
         this.name = name;
         this.timezone = timezone;
         this.createdAt = Instant.now();
+        this.rotationStartDate= LocalDate.now();
+        this.rotationStartPosition=0;
     }
 
     public void update(
@@ -56,6 +64,16 @@ public class Household {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+    public int getRotationStartPosition() {
+        return rotationStartPosition;
+    }
+    public void setRotationStartPosition(int rotationStartPosition) {
+        this.rotationStartPosition = rotationStartPosition;
+    }
+
+    public LocalDate getRotationStartDate() {
+        return rotationStartDate;
     }
 
 

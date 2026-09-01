@@ -79,4 +79,8 @@ public class HouseholdMember {
     public void updateStatus(HouseholdMemberStatus status) {
         this.status = status;
     }
+
+    public void setRotationPosition(int rotationPosition) {
+        this.rotationPosition = rotationPosition;
+    }
 }

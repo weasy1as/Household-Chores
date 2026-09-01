@@ -330,4 +330,101 @@ public class HouseholdService {
 
         return householdRepository.save(household);
     }
+
+    @Transactional
+    public HouseholdMember updateRotationPosition(
+            UUID householdId,
+            UUID userId,
+            int position,
+            Jwt jwt
+    ) {
+        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        HouseholdMember currentMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(householdId, currentUserId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "You are not a member of this household"
+                        ));
+
+        if (currentMember.getRole() != HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the household owner can reorder the rotation"
+            );
+        }
+
+        HouseholdMember memberToReorder =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(householdId, userId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Member not found"
+                        ));
+
+        long activeMemberCount = householdMemberRepository
+                .findByHouseholdId(householdId)
+                .stream()
+                .count();
+
+        if (position < 0 || position >= activeMemberCount) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid rotation position. Must be between 0 and " + (activeMemberCount - 1)
+            );
+        }
+
+        memberToReorder.setRotationPosition(position);
+
+        return householdMemberRepository.save(memberToReorder);
+    }
+
+    @Transactional
+    public Household setRotationStartingPoint(
+            UUID householdId,
+            int startPosition,
+            Jwt jwt
+    ) {
+        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        HouseholdMember currentMember =
+                householdMemberRepository
+                        .findByHouseholdIdAndUserId(householdId, currentUserId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "You are not a member of this household"
+                        ));
+
+        if (currentMember.getRole() != HouseholdMemberRole.OWNER) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the household owner can set the rotation starting point"
+            );
+        }
+
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        long activeMembers = householdMemberRepository
+                .findByHouseholdId(householdId)
+                .stream()
+                .filter(m -> m.getStatus() == HouseholdMemberStatus.ACTIVE)
+                .count();
+
+        if (startPosition < 0 || startPosition >= activeMembers) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid start position. Must be between 0 and " + (activeMembers - 1)
+            );
+        }
+
+        household.setRotationStartPosition(startPosition);
+
+        return householdRepository.save(household);
+    }
 }
