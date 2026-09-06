@@ -86,3 +86,73 @@ export async function addMember(householdId: string, formData: FormData) {
 
   revalidatePath("/dashboard");
 }
+
+export async function updateMemberStatus(
+  householdId: string,
+  userId: string,
+  status: "ACTIVE" | "INACTIVE",
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("You must be logged in");
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/members/${userId}/status?status=${status}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `Failed to update member status: ${response.status} ${errorText}`,
+    );
+  }
+
+  revalidatePath("/dashboard");
+}
+
+export async function removeMember(householdId: string, userId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("You must be logged in");
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/members/${userId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(`Failed to remove member: ${response.status} ${errorText}`);
+  }
+
+  revalidatePath("/dashboard");
+}
