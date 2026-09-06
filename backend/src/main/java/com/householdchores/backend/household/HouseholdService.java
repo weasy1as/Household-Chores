@@ -9,7 +9,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.temporal.ChronoUnit;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -512,7 +514,59 @@ public class HouseholdService {
         }
 
         household.setRotationStartPosition(startPosition);
+        household.setRotationStartDate(
+                LocalDate.now()
+        );
 
         return householdRepository.save(household);
+    }
+
+    @Transactional(readOnly = true)
+    public HouseholdMember getResponsibleMemberForDate(
+            UUID householdId,
+            LocalDate date
+    ) {
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        List<HouseholdMember> activeMembers =
+                householdMemberRepository
+                        .findByHouseholdId(householdId)
+                        .stream()
+                        .filter(member ->
+                                member.getStatus() == HouseholdMemberStatus.ACTIVE
+                        )
+                        .sorted(Comparator.comparing(
+                                HouseholdMember::getRotationPosition
+                        ))
+                        .toList();
+
+        if (activeMembers.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Household has no active members"
+            );
+        }
+
+        long daysSinceStart =
+                ChronoUnit.DAYS.between(
+                        household.getRotationStartDate(),
+                        date
+                );
+
+        int startPosition =
+                household.getRotationStartPosition();
+
+        int responsibleIndex =
+                Math.floorMod(
+                        startPosition + (int) daysSinceStart,
+                        activeMembers.size()
+                );
+
+        return activeMembers.get(responsibleIndex);
     }
 }

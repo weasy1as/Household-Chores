@@ -70,3 +70,36 @@ export async function getHouseholdMembers(householdId: string) {
 
   return response.json();
 }
+
+export async function getResponsibleMemberForDate(
+  householdId: string,
+  date: string,
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return null;
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/responsible?date=${date}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch responsible member");
+  }
+
+  return response.json();
+}

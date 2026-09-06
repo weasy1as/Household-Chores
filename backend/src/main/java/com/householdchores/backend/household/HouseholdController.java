@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -152,6 +153,18 @@ public class HouseholdController {
                 householdId,
                 startPosition,
                 jwt
+        );
+    }
+
+    @GetMapping("/{householdId}/responsible")
+    public HouseholdMember getResponsibleMemberForDate(
+            @PathVariable UUID householdId,
+            @RequestParam LocalDate date,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return householdService.getResponsibleMemberForDate(
+                householdId,
+                date
         );
     }
 }

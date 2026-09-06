@@ -4,6 +4,7 @@ import { addMember, createHousehold } from "@/lib/supabase/household/actions";
 import {
   getCurrentHousehold,
   getHouseholdMembers,
+  getResponsibleMemberForDate,
 } from "@/lib/supabase/household/server";
 
 const inputStyles =
@@ -16,6 +17,31 @@ const primaryButtonStyles =
 
 export default async function DashboardPage() {
   const household = await getCurrentHousehold();
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const dayAfterTomorrow = new Date(today);
+  dayAfterTomorrow.setDate(today.getDate() + 2);
+
+  const todayString = today.toISOString().split("T")[0];
+  const tomorrowString = tomorrow.toISOString().split("T")[0];
+  const dayAfterTomorrowString = dayAfterTomorrow.toISOString().split("T")[0];
+
+  const todayResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    todayString,
+  );
+
+  const tomorrowResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    tomorrowString,
+  );
+
+  const dayAfterTomorrowResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    dayAfterTomorrowString,
+  );
 
   if (!household) {
     return (
@@ -101,6 +127,27 @@ export default async function DashboardPage() {
             Household
           </p>
 
+          <section>
+            <h2>Duty Test</h2>
+
+            <p>
+              Today ({todayString}):{" "}
+              {todayResponsible?.user?.displayName ??
+                todayResponsible?.user?.email}
+            </p>
+
+            <p>
+              Tomorrow ({tomorrowString}):{" "}
+              {tomorrowResponsible?.user?.displayName ??
+                tomorrowResponsible?.user?.email}
+            </p>
+
+            <p>
+              Day after ({dayAfterTomorrowString}):{" "}
+              {dayAfterTomorrowResponsible?.user?.displayName ??
+                dayAfterTomorrowResponsible?.user?.email}
+            </p>
+          </section>
           <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">

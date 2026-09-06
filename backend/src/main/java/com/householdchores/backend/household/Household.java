@@ -75,6 +75,8 @@ public class Household {
     public LocalDate getRotationStartDate() {
         return rotationStartDate;
     }
-
+    public void setRotationStartDate(LocalDate rotationStartDate) {
+        this.rotationStartDate = rotationStartDate;
+    }
 
 }
