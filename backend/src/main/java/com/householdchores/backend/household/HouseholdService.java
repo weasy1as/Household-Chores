@@ -3,14 +3,17 @@ package com.householdchores.backend.household;
 import com.householdchores.backend.user.User;
 import com.householdchores.backend.user.UserRepository;
 import com.householdchores.backend.user.UserService;
+import jakarta.persistence.EntityManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class HouseholdService {
@@ -19,17 +22,20 @@ public class HouseholdService {
     private final HouseholdMemberRepository householdMemberRepository;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
 
     public HouseholdService(
             HouseholdRepository householdRepository,
             HouseholdMemberRepository householdMemberRepository,
             UserService userService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            EntityManager entityManager
     ) {
         this.householdRepository = householdRepository;
         this.householdMemberRepository = householdMemberRepository;
         this.userService = userService;
         this.userRepository=userRepository;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -401,21 +407,65 @@ public class HouseholdService {
                                 "Member not found"
                         ));
 
-        long activeMemberCount = householdMemberRepository
-                .findByHouseholdId(householdId)
-                .stream()
-                .count();
-
-        if (position < 0 || position >= activeMemberCount) {
+        if (memberToReorder.getStatus() != HouseholdMemberStatus.ACTIVE) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid rotation position. Must be between 0 and " + (activeMemberCount - 1)
+                    "Only active members can be in the rotation"
             );
         }
 
-        memberToReorder.setRotationPosition(position);
+        List<HouseholdMember> activeMembers =
+                householdMemberRepository
+                        .findByHouseholdId(householdId)
+                        .stream()
+                        .filter(member ->
+                                member.getStatus() == HouseholdMemberStatus.ACTIVE
+                        )
+                        .sorted(Comparator.comparing(
+                                HouseholdMember::getRotationPosition
+                        ))
+                        .collect(Collectors.toList());
 
-        return householdMemberRepository.save(memberToReorder);
+        if (position < 0 || position >= activeMembers.size()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid rotation position. Must be between 0 and "
+                            + (activeMembers.size() - 1)
+            );
+        }
+
+        int oldPosition = memberToReorder.getRotationPosition();
+
+        if (oldPosition == position) {
+            return memberToReorder;
+        }
+
+        /*
+         * Temporarily move all active members to negative positions
+         * so the database's unique constraint cannot be violated.
+         */
+        for (int i = 0; i < activeMembers.size(); i++) {
+            activeMembers.get(i).setRotationPosition(-(i + 1));
+        }
+
+        /*
+         * Move the selected member to its new position
+         * and shift the other members accordingly.
+         */
+
+        householdMemberRepository.saveAll(activeMembers);
+        entityManager.flush();
+        activeMembers.remove(memberToReorder);
+        activeMembers.add(position, memberToReorder);
+
+        for (int i = 0; i < activeMembers.size(); i++) {
+            activeMembers.get(i).setRotationPosition(i);
+        }
+
+        householdMemberRepository.saveAll(activeMembers);
+        entityManager.flush();
+
+        return memberToReorder;
     }
 
     @Transactional

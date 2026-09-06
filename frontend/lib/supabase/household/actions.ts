@@ -156,3 +156,40 @@ export async function removeMember(householdId: string, userId: string) {
 
   revalidatePath("/dashboard");
 }
+export async function updateRotationPosition(
+  householdId: string,
+  userId: string,
+  position: number,
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("You must be logged in");
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/members/${userId}/rotation-position?position=${position}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `Failed to update rotation position: ${response.status} ${errorText}`,
+    );
+  }
+
+  revalidatePath("/dashboard");
+}

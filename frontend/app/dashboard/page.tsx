@@ -1,4 +1,5 @@
 import MemberList from "@/components/household/member-list";
+import RotationList from "@/components/household/rotation-list";
 import { addMember, createHousehold } from "@/lib/supabase/household/actions";
 import {
   getCurrentHousehold,
@@ -169,6 +170,10 @@ export default async function DashboardPage() {
               members={members ?? []}
             />
           </div>
+          <RotationList
+            householdId={household.householdId}
+            members={members ?? []}
+          />
         </section>
 
         {/* Add member */}
