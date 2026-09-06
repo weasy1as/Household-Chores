@@ -34,13 +34,21 @@ public class HouseholdService {
 
     @Transactional
     public Household createHousehold(
-            String name,
-            String timezone,
-            Jwt jwt
+            Jwt jwt,
+            CreateHouseholdRequest request
     ) {
         User user = userService.getOrCreateUser(jwt);
 
-        Household household = new Household(name, timezone);
+        if (!householdMemberRepository.findByUserId(user.getId()).isEmpty()) {
+            throw new IllegalStateException(
+                    "User is already a member of a household"
+            );
+        }
+
+        Household household = new Household(
+                request.name(),
+                request.timezone()
+        );
 
         householdRepository.save(household);
 
@@ -55,6 +63,34 @@ public class HouseholdService {
         householdMemberRepository.save(owner);
 
         return household;
+    }
+
+    @Transactional
+    public HouseholdMembershipResponse getCurrentMembership(Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt);
+
+        HouseholdMember membership = householdMemberRepository
+                .findByUserId(user.getId())
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        if (membership == null) {
+            return null;
+        }
+
+        Household household = membership.getHousehold();
+
+        return new HouseholdMembershipResponse(
+                household.getId(),
+                household.getName(),
+                household.getTimezone(),
+                household.getRotationStartDate(),
+                household.getRotationStartPosition(),
+                membership.getRole(),
+                membership.getStatus(),
+                membership.getRotationPosition()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -94,8 +130,10 @@ public class HouseholdService {
                 .findByHouseholdId(householdId)
                 .stream()
                 .map(member -> new HouseholdMemberResponse(
+                        member.getId(),
                         member.getUser().getId(),
                         member.getUser().getDisplayName(),
+                        member.getUser().getEmail(),
                         member.getRole(),
                         member.getStatus(),
                         member.getRotationPosition()

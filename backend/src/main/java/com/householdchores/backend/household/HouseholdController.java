@@ -27,10 +27,23 @@ public class HouseholdController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return householdService.createHousehold(
-                request.name(),
-                request.timezone(),
-                jwt
+                jwt,
+                request
         );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<HouseholdMembershipResponse> getMyHousehold(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        HouseholdMembershipResponse membership =
+                householdService.getCurrentMembership(jwt);
+
+        if (membership == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(membership);
     }
 
     @GetMapping
