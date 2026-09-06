@@ -173,6 +173,7 @@ export default async function DashboardPage() {
           <RotationList
             householdId={household.householdId}
             members={members ?? []}
+            rotationStartPosition={household.rotationStartPosition}
           />
         </section>
 

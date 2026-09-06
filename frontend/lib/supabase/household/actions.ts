@@ -193,3 +193,40 @@ export async function updateRotationPosition(
 
   revalidatePath("/dashboard");
 }
+
+export async function setRotationStartingPoint(
+  householdId: string,
+  startPosition: number,
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("You must be logged in");
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/rotation-start?startPosition=${startPosition}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `Failed to set rotation starting point: ${response.status} ${errorText}`,
+    );
+  }
+
+  revalidatePath("/dashboard");
+}
