@@ -82,4 +82,38 @@ public class DutyController {
                 UUID.fromString(jwt.getSubject())
         );
     }
+
+    @PostMapping("/generate")
+    public Duty generateDuty(
+            @PathVariable UUID householdId,
+            @RequestParam LocalDate date,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return dutyService.getOrCreateDuty(
+                householdId,
+                date
+        );
+    }
+
+    @GetMapping("/today")
+    public Duty getTodayDuty(
+            @PathVariable UUID householdId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return dutyService.getTodayDuty(householdId);
+    }
+
+    @GetMapping("/schedule")
+    public List<ScheduleEntryResponse> getSchedule(
+            @PathVariable UUID householdId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return dutyService.getSchedule(
+                householdId,
+                startDate,
+                endDate
+        );
+    }
 }

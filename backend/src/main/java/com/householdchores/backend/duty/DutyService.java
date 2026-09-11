@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -87,6 +89,95 @@ public class DutyService {
         );
 
         return dutyRepository.save(duty);
+    }
+
+    @Transactional
+    public Duty getTodayDuty(UUID householdId) {
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        LocalDate today =
+                LocalDate.now(
+                        ZoneId.of(household.getTimezone())
+                );
+
+        return getOrCreateDuty(
+                householdId,
+                today
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleEntryResponse> getSchedule(
+            UUID householdId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "End date must not be before start date"
+            );
+        }
+
+        Household household = householdRepository
+                .findById(householdId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Household not found"
+                ));
+
+        List<HouseholdMember> activeMembers =
+                householdMemberRepository
+                        .findByHouseholdId(householdId)
+                        .stream()
+                        .filter(member ->
+                                member.getStatus() == HouseholdMemberStatus.ACTIVE
+                        )
+                        .sorted(Comparator.comparing(
+                                HouseholdMember::getRotationPosition
+                        ))
+                        .toList();
+
+        if (activeMembers.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Household has no active members"
+            );
+        }
+
+        List<ScheduleEntryResponse> schedule =
+                new ArrayList<>();
+
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            int rotationIndex =
+                    calculateRotationIndex(
+                            activeMembers.size(),
+                            household,
+                            currentDate
+                    );
+
+            HouseholdMember scheduledMember =
+                    activeMembers.get(rotationIndex);
+
+            schedule.add(
+                    new ScheduleEntryResponse(
+                            currentDate,
+                            scheduledMember.getUser().getId(),
+                            scheduledMember.getUser().getDisplayName()
+                    )
+            );
+
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return schedule;
     }
 
     private int calculateRotationIndex(
