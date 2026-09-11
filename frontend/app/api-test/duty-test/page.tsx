@@ -29,7 +29,7 @@ export default async function DutyTestPage() {
 
   const schedule = getSchedule(
     household.householdId,
-    "2026-09-12",
+    "2026-09-11",
     "2026-09-19",
   );
 

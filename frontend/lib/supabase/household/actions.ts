@@ -230,3 +230,46 @@ export async function setRotationStartingPoint(
 
   revalidatePath("/dashboard");
 }
+
+export async function resolveDuty(
+  householdId: string,
+  dutyId: string,
+  outcome: "COMPLETED" | "COVERED" | "PAID" | "SWITCHED" | "MISSED",
+  completedByMemberId?: string,
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("You must be logged in");
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/households/${householdId}/duties/${dutyId}/resolve`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        outcome,
+        completedByMemberId: completedByMemberId ?? null,
+      }),
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(`Failed to resolve duty: ${response.status} ${errorText}`);
+  }
+
+  revalidatePath("/dashboard");
+
+  return response.json();
+}

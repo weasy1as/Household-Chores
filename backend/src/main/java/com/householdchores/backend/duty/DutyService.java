@@ -8,10 +8,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DutyService {
@@ -111,6 +109,21 @@ public class DutyService {
         );
     }
 
+    private boolean isMakeupDuty(
+            Duty duty,
+            Map<LocalDate, Duty> dutiesByDate
+    ) {
+        LocalDate previousDate =
+                duty.getDate().minusDays(1);
+
+        Duty previousDuty =
+                dutiesByDate.get(previousDate);
+
+        return previousDuty != null
+                && previousDuty.getOutcome() == DutyOutcome.MISSED
+                && previousDuty.getScheduledMember().getId()
+                .equals(duty.getScheduledMember().getId());
+    }
     @Transactional(readOnly = true)
     public List<ScheduleEntryResponse> getSchedule(
             UUID householdId,
@@ -150,29 +163,86 @@ public class DutyService {
             );
         }
 
+        List<Duty> persistedDuties =
+                dutyRepository
+                        .findByHouseholdIdAndDateBetweenOrderByDateAsc(
+                                householdId,
+                                startDate,
+                                endDate
+                        );
+
+        Map<LocalDate, Duty> dutiesByDate =
+                persistedDuties.stream()
+                        .collect(Collectors.toMap(
+                                Duty::getDate,
+                                duty -> duty
+                        ));
+
         List<ScheduleEntryResponse> schedule =
                 new ArrayList<>();
+
+        int rotationOffset = 0;
 
         LocalDate currentDate = startDate;
 
         while (!currentDate.isAfter(endDate)) {
-            int rotationIndex =
-                    calculateRotationIndex(
-                            activeMembers.size(),
-                            household,
-                            currentDate
-                    );
 
-            HouseholdMember scheduledMember =
-                    activeMembers.get(rotationIndex);
+            Duty persistedDuty =
+                    dutiesByDate.get(currentDate);
 
-            schedule.add(
-                    new ScheduleEntryResponse(
-                            currentDate,
-                            scheduledMember.getUser().getId(),
-                            scheduledMember.getUser().getDisplayName()
-                    )
-            );
+            if (persistedDuty != null) {
+
+                schedule.add(
+                        new ScheduleEntryResponse(
+                                currentDate,
+                                persistedDuty
+                                        .getScheduledMember()
+                                        .getUser()
+                                        .getId(),
+                                persistedDuty
+                                        .getScheduledMember()
+                                        .getUser()
+                                        .getDisplayName()
+                        )
+                );
+
+                if (isMakeupDuty(
+                        persistedDuty,
+                        dutiesByDate
+                )) {
+                    rotationOffset++;
+                }
+
+            } else {
+
+                int rotationIndex =
+                        calculateRotationIndex(
+                                activeMembers.size(),
+                                household,
+                                currentDate
+                        );
+
+                rotationIndex =
+                        Math.floorMod(
+                                rotationIndex - rotationOffset,
+                                activeMembers.size()
+                        );
+
+                HouseholdMember scheduledMember =
+                        activeMembers.get(rotationIndex);
+
+                schedule.add(
+                        new ScheduleEntryResponse(
+                                currentDate,
+                                scheduledMember
+                                        .getUser()
+                                        .getId(),
+                                scheduledMember
+                                        .getUser()
+                                        .getDisplayName()
+                        )
+                );
+            }
 
             currentDate = currentDate.plusDays(1);
         }
@@ -288,11 +358,11 @@ public class DutyService {
                         existingDuty -> {
                             if (existingDuty.getStatus() == DutyStatus.PENDING_REVIEW
                                     && existingDuty.getOutcome() == null) {
-                                existingDuty = new Duty(
-                                        missedDuty.getHousehold(),
-                                        nextDay,
+
+                                existingDuty.setScheduledMember(
                                         missedDuty.getScheduledMember()
                                 );
+
                                 dutyRepository.save(existingDuty);
                             }
                         },
@@ -302,6 +372,7 @@ public class DutyService {
                                     nextDay,
                                     missedDuty.getScheduledMember()
                             );
+
                             dutyRepository.save(makeupDuty);
                         }
                 );

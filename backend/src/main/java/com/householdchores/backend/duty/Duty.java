@@ -100,4 +100,8 @@ public class Duty {
         this.status = DutyStatus.RESOLVED;
         this.resolvedAt = Instant.now();
     }
+
+    public void setScheduledMember(HouseholdMember scheduledMember) {
+        this.scheduledMember = scheduledMember;
+    }
 }
