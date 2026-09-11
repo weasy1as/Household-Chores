@@ -1,6 +1,5 @@
-import MemberList from "@/components/household/member-list";
-import RotationList from "@/components/household/rotation-list";
-import { addMember, createHousehold } from "@/lib/supabase/household/actions";
+import Link from "next/link";
+import { createHousehold } from "@/lib/supabase/household/actions";
 import {
   getCurrentHousehold,
   getHouseholdMembers,
@@ -17,32 +16,6 @@ const primaryButtonStyles =
 
 export default async function DashboardPage() {
   const household = await getCurrentHousehold();
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const dayAfterTomorrow = new Date(today);
-  dayAfterTomorrow.setDate(today.getDate() + 2);
-
-  const todayString = today.toISOString().split("T")[0];
-  const tomorrowString = tomorrow.toISOString().split("T")[0];
-  const dayAfterTomorrowString = dayAfterTomorrow.toISOString().split("T")[0];
-
-  const todayResponsible = await getResponsibleMemberForDate(
-    household.householdId,
-    todayString,
-  );
-
-  const tomorrowResponsible = await getResponsibleMemberForDate(
-    household.householdId,
-    tomorrowString,
-  );
-
-  const dayAfterTomorrowResponsible = await getResponsibleMemberForDate(
-    household.householdId,
-    dayAfterTomorrowString,
-  );
-
   if (!household) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
@@ -116,7 +89,31 @@ export default async function DashboardPage() {
     );
   }
 
-  const members = await getHouseholdMembers(household.householdId);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const dayAfterTomorrow = new Date(today);
+  dayAfterTomorrow.setDate(today.getDate() + 2);
+
+  const todayString = today.toISOString().split("T")[0];
+  const tomorrowString = tomorrow.toISOString().split("T")[0];
+  const dayAfterTomorrowString = dayAfterTomorrow.toISOString().split("T")[0];
+
+  const todayResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    todayString,
+  );
+
+  const tomorrowResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    tomorrowString,
+  );
+
+  const dayAfterTomorrowResponsible = await getResponsibleMemberForDate(
+    household.householdId,
+    dayAfterTomorrowString,
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
@@ -200,70 +197,20 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {/* Members */}
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-6 py-5">
-            <h2 className="text-base font-semibold text-slate-900">
-              Household members
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Manage the people in your household.
-            </p>
-          </div>
-
-          <div className="p-6">
-            <MemberList
-              householdId={household.householdId}
-              members={members ?? []}
-            />
-          </div>
-          <RotationList
-            householdId={household.householdId}
-            members={members ?? []}
-            rotationStartPosition={household.rotationStartPosition}
-          />
-        </section>
-
-        {/* Add member */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-6 py-5">
-            <h2 className="text-base font-semibold text-slate-900">
-              Add member
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Invite another person to your household by email.
-            </p>
-          </div>
-
-          <form
-            action={addMember.bind(null, household.householdId)}
-            className="p-6"
+        <nav className="flex flex-col gap-3 sm:flex-row" aria-label="Household">
+          <Link
+            href="/household/members"
+            className={`${primaryButtonStyles} w-full sm:w-auto`}
           >
-            <div className="max-w-xl">
-              <label htmlFor="email" className={labelStyles}>
-                Member email
-              </label>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  className={inputStyles}
-                />
-
-                <button
-                  type="submit"
-                  className={`${primaryButtonStyles} shrink-0`}
-                >
-                  Add member
-                </button>
-              </div>
-            </div>
-          </form>
-        </section>
+            Manage members
+          </Link>
+          <Link
+            href="/household/rotation"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+          >
+            Manage rotation
+          </Link>
+        </nav>
       </div>
     </main>
   );
